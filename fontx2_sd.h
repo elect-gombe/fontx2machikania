@@ -5,7 +5,7 @@
 #include <stdint.h>
 #include "ff.h"
 
-#define _FX2_MAX_CODE_BLOCK 128
+#define _FX2_MAX_CODE_BLOCK 100
 
 typedef struct {
   uint8_t width;
