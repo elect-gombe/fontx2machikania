@@ -54,7 +54,6 @@ int isZENKAKU(unsigned char c){
    else return 0;
 }
 
-
 void main(void) {
   int read;
   static volatile FRESULT res;
@@ -73,31 +72,6 @@ void main(void) {
   CNPUBSET = KEYSTART | KEYFIRE | KEYUP | KEYDOWN | KEYLEFT | KEYRIGHT; // プルアップ設定
   ANSELB = 0x0000; // 全てデジタル
   LATACLR = 2; // RA1=0（ボタンモード）
-
-  RPB13R = 5; //RPB13ピンにOC4を割り当て
-  OC4R = 0;
-  OC4CON = 0x000e; // Timer3ベース、PWMモード
-  OC4CONSET = 0x8000; //OC4スタート
-  T3CON = 0x0000; // プリスケーラ1:1
-  PR3 = 256;
-  T3CONSET = 0x8000; // タイマ3スタート
-
-  T4CONbits.SIDL = 0;
-  T4CONbits.TCKPS = 3;
-  T4CONbits.T32 = 0;
-  T4CONbits.TCS = 0;
-  TMR4 = 0; /*とりあえず和音を再生しました。ソースを公開します。ハードは同じで多分大丈夫ですが心配ならローパスフィルターを入れてください。割り込みなどは一切使っていません。
-	      コードはリファクタリングしておきます。*/
-  PR4 = CLOCK_FREQ / 8 / SAMPLING_FREQ;
-  T4CONbits.ON = 1;
-
-  DmaChnOpen(0, 0, DMA_OPEN_AUTO);
-
-  DmaChnSetEventControl(0, DMA_EV_START_IRQ(_TIMER_4_IRQ));
-
-  DmaChnSetTxfer(0, sounddata, (void*) &OC4RS, sizeof (sounddata), 1, 1);
-
-  DmaChnEnable(0);
 
   init_composite(); // ビデオ出力システムの初期化
 
@@ -133,10 +107,9 @@ void main(void) {
   }
   printstr(3, curr++*10, 13, -1, "text_OK");
 
-//    displayString_on_a_line("おはようございます。テキスト表示テストです。良好ですね！！Hello, this is test of text display.. it looks very good!!");
-    displayString_on_a_line("Hello, this is test of text display.. it looks very good!!");
-//  fx2_displayFont('A', 0, 0);
-  while(1)asm("wait");
+    displayString_on_a_line("\x82\xa8\x82\xcd\x82\xe6\x82\xa4\x82\xb2\x82\xb4\x82\xa2\x82\xdc\x82\xb7\x81\x42\n\x83\x65\x83\x4c\x83\x58\x83\x67\x83\x65\x83\x58\x83\x67\x82\xc5\x82\xb7\x81\x42\x97\xc7\x8d\x44\x82\xc5\x82\xb7\x82\xcb\x81\x49\x81\x49\xe3\x59\x97\xed\x82\xc9\x9f\x54\x82\xc1\x82\xc4\x82\xdc\x82\xb7\x81\x42\n\x48\x65\x6c\x6c\x6f\x2c\x20\x57\x6f\x72\x6c\x64\x2e\x20\x54\x68\x69\x73\x20\x64\x65\x6d\x6f\x20\x69\x6e\x63\x6c\x75\x64\x65\x20\x73\x6f\x6d\x65\x20\x6d\x75\x6c\x74\x69\x62\x79\x74\x65\x20\x63\x68\x61\x72\x61\x63\x74\x6f\x72\x73\x20\x6c\x69\x6b\x65\x20\x81\x67\x82\x60\x81\x68\x2e\x20\n\x4f\x68\x2c\x20\x69\x73\x20\x69\x74\x20\x73\x6f\x20\x67\x6f\x6f\x64\x3f\n\x93\xfa\x96\x7b\x8c\xea\x82\xe0\x45\x6e\x67\x6c\x69\x73\x68\x82\xe0\x8d\xac\x8d\x87\x95\x5c\x8e\xa6\x82\xe0\x82\xe0\x82\xbf\x82\xeb\x82\xf1\x89\xc2\x94\x5c\x82\xc5\x82\xb7\x81\x42\x44\x4d\x41\x82\xf0\x97\x70\x82\xa2\x82\xbd\x53\x44\x83\x4a\x81\x5b\x83\x68\x93\x5d\x91\x97\x82\xc6\x8d\x87\x82\xed\x82\xb9\x82\xc4\x31\x30\x30\x30\x95\xb6\x8e\x9a\x2f\x82\x93\x82\xd9\x82\xc7\x91\xac\x93\x78\x82\xaa\x8f\x6f\x82\xdc\x82\xb7\x81\x42\n\x0e\xe0\x3d");
+
+    while(1)asm("wait");
 
   
   while(1){
@@ -149,43 +122,5 @@ void main(void) {
       if(*str==0||*str=='\n');
       if(str-buff >= 3200)break;
     }
-  }
-}
-
-void musicTask(void) {
-  audiotask();
-}
-
-void audiotask(void) {
-  static uint prevtrans = 1;
-  uint8_t *buff;
-  UINT read;
-
-#ifdef SIMMODE
-  buff = &sounddata[0];
-#else
-  buff = NULL; //&sounddata[0];
-#endif
-  if (DmaChnGetEvFlags(0) & DMA_EV_SRC_HALF) {
-    DmaChnClrEvFlags(0, DMA_EV_SRC_HALF);
-    if (prevtrans == 2) {
-      prevtrans = 1;
-      buff = &sounddata[0];
-    }
-  } else if (DmaChnGetEvFlags(0) & DMA_EV_SRC_FULL) {
-    DmaChnClrEvFlags(0, DMA_EV_SRC_FULL);
-    if (prevtrans == 1) {
-      prevtrans = 2;
-      buff = &sounddata[SIZEOFSOUNDBF / 2];
-    }
-  }
-
-  if (buff) {
-    int i;
-    for (i = 0; i < SIZEOFSOUNDBF / 2; i++) {
-      buff[i] = 128;
-    }
-    //soundTask(buff);
-    f_read(&fhandle, buff, SIZEOFSOUNDBF / 2, &read);
   }
 }

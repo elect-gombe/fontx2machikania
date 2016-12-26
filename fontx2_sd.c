@@ -120,13 +120,22 @@ void displayString_on_a_line(const unsigned char *str){
   uint16_t code;
   uint8_t width,height;
   while(*str){
-    if(isZENKAKU(*str)){
+      if(*str=='\n'){
+        str++;
+        py+=height;
+          if(py+height >= 224){
+            py=0;
+          }
+          px=0;                  
+          continue;
+      }
+      else if(isZENKAKU(*str)){
       width = zn_fontx2.width;
       height = zn_fontx2.height;
       code = *str++;
       code <<= 8;
       code |= *str++;
-    }else{
+    }else {
       width = fonthn[OFS_WIDTH];
       height = fonthn[OFS_HEIGHT];
       code = *str++;
@@ -168,7 +177,7 @@ void fx2_displayFont(uint16_t code,int x,int y){
   
   for(py=0;py<height;py++){
     for(px=0;px<width;px++){
-      n = (px / 8) + py * ((zn_fontx2.width + 7) / 8);
+      n = (px / 8) + py * ((width + 7) / 8);
       b = 7 - (px % 8);
 
       if(data[n]&0x01<<b){
